@@ -61,6 +61,7 @@ pub struct ServiceRoot {
 pub enum RedfishVendor {
     Lenovo,
     LenovoAMI,
+    LenovoGB300,
     Dell,
     NvidiaDpu,
     Supermicro,
@@ -125,6 +126,18 @@ impl ServiceRoot {
             .map(|oem| oem.keys().any(|k| k.to_lowercase() == "ami"))
             .unwrap_or(false)
     }
+
+    /// Lenovo GB300: host `Systems/System_0` and platform `Chassis/Chassis_0` are both Lenovo.
+    pub fn is_lenovo_gb300_platform(
+        host_system_manufacturer: Option<&str>,
+        host_chassis_manufacturer: Option<&str>,
+    ) -> bool {
+        fn is_lenovo(manufacturer: Option<&str>) -> bool {
+            manufacturer.is_some_and(|m| m.eq_ignore_ascii_case("Lenovo"))
+        }
+
+        is_lenovo(host_system_manufacturer) && is_lenovo(host_chassis_manufacturer)
+    }
 }
 
 #[cfg(test)]
@@ -156,5 +169,22 @@ mod test {
             ..Default::default()
         };
         assert_eq!(result.vendor().unwrap(), RedfishVendor::NvidiaDpu);
+    }
+
+    #[test]
+    fn test_lenovo_gb300_platform_detection() {
+        assert!(ServiceRoot::is_lenovo_gb300_platform(
+            Some("Lenovo"),
+            Some("Lenovo"),
+        ));
+        assert!(!ServiceRoot::is_lenovo_gb300_platform(
+            Some("Lenovo"),
+            Some("NVIDIA"),
+        ));
+        assert!(!ServiceRoot::is_lenovo_gb300_platform(
+            Some("NVIDIA"),
+            Some("Lenovo"),
+        ));
+        assert!(!ServiceRoot::is_lenovo_gb300_platform(Some("Lenovo"), None));
     }
 }

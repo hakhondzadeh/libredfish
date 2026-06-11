@@ -31,7 +31,9 @@ use reqwest::{
 use serde::{de::DeserializeOwned, Serialize};
 use tracing::{debug, Instrument};
 
-use crate::model::service_root::RedfishVendor;
+use crate::model::chassis::Chassis;
+use crate::model::ComputerSystem;
+use crate::model::service_root::{RedfishVendor, ServiceRoot};
 use crate::{model::InvalidValueError, standard::RedfishStandard, Redfish, RedfishError};
 
 pub const REDFISH_ENDPOINT: &str = "redfish/v1";
@@ -190,6 +192,29 @@ impl RedfishClientPool {
     // If there's ever a need to expose this as pub, it's entirely
     // reasonable to do so (and rename it to something descriptive like
     // create_complete_client).
+
+    /// Detect Lenovo GB300 from Systems/System_0 and Chassis/Chassis_0 Manufacturer.
+    async fn detect_lenovo_gb300(
+        s: &RedfishStandard,
+        systems: &[String],
+        chassis: &[String],
+    ) -> Result<bool, RedfishError> {
+        if !systems.iter().any(|id| id == "System_0")
+            || !systems.iter().any(|id| id == "HGX_Baseboard_0")
+            || !chassis.iter().any(|id| id == "Chassis_0")
+        {
+            return Ok(false);
+        }
+
+        let (_, host): (_, ComputerSystem) = s.client.get("Systems/System_0").await?;
+        let (_, platform_chassis): (_, Chassis) = s.client.get("Chassis/Chassis_0").await?;
+
+        Ok(ServiceRoot::is_lenovo_gb300_platform(
+            host.manufacturer.as_deref(),
+            platform_chassis.manufacturer.as_deref(),
+        ))
+    }
+
     async fn create_client_impl(
         &self,
         endpoint: Endpoint,
@@ -219,14 +244,33 @@ impl RedfishClientPool {
         // and the Delta client never references a system id, so skip both the
         // lookup and the set entirely. For every other vendor, resolve the
         // system id and set it before set_vendor (DGX detection depends on it).
-        if vendor != RedfishVendor::DeltaPowerShelf {
+        let lenovo_gb300 = if vendor != RedfishVendor::DeltaPowerShelf {
             let systems = s.get_systems().await?;
-            let system_id = systems.first().ok_or_else(|| RedfishError::GenericError {
-                error: "No systems found in service root".to_string(),
-            })?;
+            let is_lenovo_gb300 = vendor == RedfishVendor::LenovoGB300
+                || detect_lenovo_gb300(&s, &systems, &chassis).await?;
+            let system_id = if is_lenovo_gb300 {
+                systems.iter().find(|id| *id == "System_0").ok_or_else(|| {
+                    RedfishError::GenericError {
+                        error: "Lenovo GB300 requires Systems/System_0".to_string(),
+                    }
+                })?
+            } else {
+                systems.first().ok_or_else(|| RedfishError::GenericError {
+                    error: "No systems found in service root".to_string(),
+                })?
+            };
             // call set_system_id always before calling set_vendor
             s.set_system_id(system_id)?;
-        }
+            Some(is_lenovo_gb300)
+        } else {
+            None
+        };
+
+        let vendor = if lenovo_gb300 == Some(true) {
+            RedfishVendor::LenovoGB300
+        } else {
+            vendor
+        };
 
         s.set_manager_id(manager_id)?;
         s.set_service_root(service_root.clone())?;
