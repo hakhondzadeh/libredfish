@@ -247,7 +247,7 @@ impl RedfishClientPool {
         let lenovo_gb300 = if vendor != RedfishVendor::DeltaPowerShelf {
             let systems = s.get_systems().await?;
             let is_lenovo_gb300 = vendor == RedfishVendor::LenovoGB300
-                || detect_lenovo_gb300(&s, &systems, &chassis).await?;
+                || Self::detect_lenovo_gb300(&s, &systems, &chassis).await?;
             let system_id = if is_lenovo_gb300 {
                 systems.iter().find(|id| *id == "System_0").ok_or_else(|| {
                     RedfishError::GenericError {
