@@ -1206,6 +1206,33 @@ impl Redfish for Bmc {
     fn set_utc_timezone<'a>(&'a self) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
         Box::pin(async move { self.s.set_utc_timezone().await })
     }
+
+    fn set_ntp_servers<'a>(
+        &'a self,
+        servers: &'a [String],
+    ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
+        Box::pin(async move {
+            if servers.is_empty() {
+                return Ok(());
+            }
+
+            // iLO supports at most 2 static NTP servers; extra entries are ignored.
+            if servers.len() > 2 {
+                tracing::warn!(
+                    "iLO supports at most 2 static NTP servers; ignoring {} extra entries",
+                    servers.len() - 2,
+                );
+            }
+            let static_ntp_servers = vec![
+                servers.first().cloned().unwrap_or_default(),
+                servers.get(1).cloned().unwrap_or_default(),
+            ];
+
+            let url = format!("Managers/{}/DateTime", self.s.manager_id());
+            let body = HashMap::from([("StaticNTPServers", static_ntp_servers)]);
+            self.s.client.patch(&url, body).await.map(|_resp| ())
+        })
+    }
 }
 
 impl Bmc {

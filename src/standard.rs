@@ -1250,6 +1250,13 @@ impl Redfish for RedfishStandard {
             Ok(())
         })
     }
+
+    fn set_ntp_servers<'a>(
+        &'a self,
+        servers: &'a [String],
+    ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
+        Box::pin(async move { self.set_manager_ntp_servers(servers).await })
+    }
 }
 
 impl RedfishStandard {
@@ -1682,6 +1689,31 @@ impl RedfishStandard {
         let url = format!("Managers/{}/NetworkProtocol", self.manager_id(),);
         let (_status_code, body) = self.client.get(&url).await?;
         Ok(body)
+    }
+
+    /// Set NTP servers via the standard ManagerNetworkProtocol resource.
+    pub async fn set_manager_ntp_servers(&self, servers: &[String]) -> Result<(), RedfishError> {
+        if servers.is_empty() {
+            return Ok(());
+        }
+
+        let url = format!("Managers/{}/NetworkProtocol", self.manager_id());
+        let ntp_servers = HashMap::from([(
+            "NTP",
+            json!({
+                "NTPServers": servers,
+                "ProtocolEnabled": true,
+            }),
+        )]);
+
+        if matches!(
+            self.vendor,
+            Some(RedfishVendor::AMI | RedfishVendor::LenovoAMI)
+        ) {
+            self.client.patch_with_if_match(&url, ntp_servers).await
+        } else {
+            self.client.patch(&url, ntp_servers).await.map(|_resp| ())
+        }
     }
 
     pub async fn reset_manager(
