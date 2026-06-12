@@ -193,7 +193,7 @@ impl RedfishClientPool {
     // reasonable to do so (and rename it to something descriptive like
     // create_complete_client).
 
-    /// Detect Lenovo GB300 from Systems/System_0 and Chassis/Chassis_0 Manufacturer.
+    /// Detect Lenovo GB300 from GB300 NVL layout, baseboard model, and Lenovo host/chassis.
     async fn detect_lenovo_gb300(
         s: &RedfishStandard,
         systems: &[String],
@@ -208,10 +208,13 @@ impl RedfishClientPool {
 
         let (_, host): (_, ComputerSystem) = s.client.get("Systems/System_0").await?;
         let (_, platform_chassis): (_, Chassis) = s.client.get("Chassis/Chassis_0").await?;
+        let (_, baseboard): (_, ComputerSystem) = s.client.get("Systems/HGX_Baseboard_0").await?;
 
         Ok(ServiceRoot::is_lenovo_gb300_platform(
+            systems,
             host.manufacturer.as_deref(),
             platform_chassis.manufacturer.as_deref(),
+            baseboard.model.as_deref(),
         ))
     }
 

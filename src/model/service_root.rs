@@ -127,16 +127,22 @@ impl ServiceRoot {
             .unwrap_or(false)
     }
 
-    /// Lenovo GB300: host `Systems/System_0` and platform `Chassis/Chassis_0` are both Lenovo.
+    /// Lenovo GB300 NVL: GB300 baseboard layout/model plus Lenovo host system and chassis.
     pub fn is_lenovo_gb300_platform(
+        systems: &[String],
         host_system_manufacturer: Option<&str>,
         host_chassis_manufacturer: Option<&str>,
+        baseboard_model: Option<&str>,
     ) -> bool {
         fn is_lenovo(manufacturer: Option<&str>) -> bool {
             manufacturer.is_some_and(|m| m.eq_ignore_ascii_case("Lenovo"))
         }
 
-        is_lenovo(host_system_manufacturer) && is_lenovo(host_chassis_manufacturer)
+        systems.iter().any(|id| id == "System_0")
+            && systems.iter().any(|id| id == "HGX_Baseboard_0")
+            && baseboard_model.is_some_and(|m| m.to_lowercase().contains("gb300"))
+            && is_lenovo(host_system_manufacturer)
+            && is_lenovo(host_chassis_manufacturer)
     }
 }
 
@@ -173,18 +179,42 @@ mod test {
 
     #[test]
     fn test_lenovo_gb300_platform_detection() {
+        let gb300_systems = vec!["HGX_Baseboard_0".to_string(), "System_0".to_string()];
         assert!(ServiceRoot::is_lenovo_gb300_platform(
+            &gb300_systems,
             Some("Lenovo"),
             Some("Lenovo"),
+            Some("GB300 1CPU:2GPU Board PC"),
         ));
         assert!(!ServiceRoot::is_lenovo_gb300_platform(
+            &gb300_systems,
             Some("Lenovo"),
-            Some("NVIDIA"),
+            Some("Lenovo"),
+            Some("GB200 NVL"),
         ));
         assert!(!ServiceRoot::is_lenovo_gb300_platform(
+            &gb300_systems,
             Some("NVIDIA"),
-            Some("Lenovo"),
+            Some("NVIDIA"),
+            Some("GB300 1CPU:2GPU Board PC"),
         ));
-        assert!(!ServiceRoot::is_lenovo_gb300_platform(Some("Lenovo"), None));
+        assert!(!ServiceRoot::is_lenovo_gb300_platform(
+            &gb300_systems,
+            Some("Lenovo"),
+            Some("NVIDIA"),
+            Some("GB300 1CPU:2GPU Board PC"),
+        ));
+        assert!(!ServiceRoot::is_lenovo_gb300_platform(
+            &gb300_systems,
+            Some("Lenovo"),
+            Some("Lenovo"),
+            None,
+        ));
+        assert!(!ServiceRoot::is_lenovo_gb300_platform(
+            &["HGX_Baseboard_0".to_string()],
+            Some("Lenovo"),
+            Some("Lenovo"),
+            Some("GB300 1CPU:2GPU Board PC"),
+        ));
     }
 }
