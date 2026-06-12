@@ -432,10 +432,7 @@ impl Redfish for Bmc {
     ) -> crate::RedfishFuture<'a, Result<(), RedfishError>> {
         Box::pin(async move {
             use EnabledDisabled::*;
-            if matches!(
-                self.s.vendor,
-                Some(RedfishVendor::LenovoAMI)
-            ) {
+            if self.s.vendor == Some(RedfishVendor::LenovoAMI) {
                 let value = match target {
                     Enabled => "Enable",
                     Disabled => "Disable",
@@ -475,10 +472,7 @@ impl Redfish for Bmc {
     /// On LenovoAMI, reads the OEM ConfigBMC endpoint instead.
     fn lockdown_status<'a>(&'a self) -> crate::RedfishFuture<'a, Result<Status, RedfishError>> {
         Box::pin(async move {
-            if matches!(
-                self.s.vendor,
-                Some(RedfishVendor::LenovoAMI)
-            ) {
+            if self.s.vendor == Some(RedfishVendor::LenovoAMI) {
                 return self.lockdown_status_lenovo_ami().await;
             }
 
@@ -706,10 +700,7 @@ impl Redfish for Bmc {
         Box::pin(async move {
             // The hardcoded URIs and keys below are only verified for the Lenovo HS350x, so
             // restrict this native path to LenovoAMI; other AMI platforms fall back to NotSupported.
-            if !matches!(
-                self.s.vendor,
-                Some(RedfishVendor::LenovoAMI)
-            ) {
+            if self.s.vendor != Some(RedfishVendor::LenovoAMI) {
                 return self
                     .s
                     .update_firmware_multipart(filename, reboot, timeout, component_type)
