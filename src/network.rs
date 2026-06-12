@@ -247,10 +247,10 @@ impl RedfishClientPool {
         // and the Delta client never references a system id, so skip both the
         // lookup and the set entirely. For every other vendor, resolve the
         // system id and set it before set_vendor (DGX detection depends on it).
-        let lenovo_gb300 = if vendor != RedfishVendor::DeltaPowerShelf {
+        if vendor != RedfishVendor::DeltaPowerShelf {
             let systems = s.get_systems().await?;
-            let is_lenovo_gb300 = vendor == RedfishVendor::LenovoGB300
-                || Self::detect_lenovo_gb300(&s, &systems, &chassis).await?;
+            let is_lenovo_gb300 = vendor == RedfishVendor::AMI
+                && Self::detect_lenovo_gb300(&s, &systems, &chassis).await?;
             let system_id = if is_lenovo_gb300 {
                 systems.iter().find(|id| *id == "System_0").ok_or_else(|| {
                     RedfishError::GenericError {
@@ -264,16 +264,7 @@ impl RedfishClientPool {
             };
             // call set_system_id always before calling set_vendor
             s.set_system_id(system_id)?;
-            Some(is_lenovo_gb300)
-        } else {
-            None
-        };
-
-        let vendor = if lenovo_gb300 == Some(true) {
-            RedfishVendor::LenovoGB300
-        } else {
-            vendor
-        };
+        }
 
         s.set_manager_id(manager_id)?;
         s.set_service_root(service_root.clone())?;

@@ -148,7 +148,7 @@ impl Redfish for RedfishStandard {
             // AMI BMC requires If-Match header for PATCH requests
             if matches!(
                 service_root.vendor(),
-                Some(RedfishVendor::AMI | RedfishVendor::LenovoAMI | RedfishVendor::LenovoGB300)
+                Some(RedfishVendor::AMI | RedfishVendor::LenovoAMI)
             ) {
                 self.client.patch_with_if_match(&url, &data).await
             } else {
@@ -1304,7 +1304,7 @@ impl RedfishStandard {
             RedfishVendor::Dell => Ok(Box::new(crate::dell::Bmc::new(self.clone())?)),
             RedfishVendor::Hpe => Ok(Box::new(crate::hpe::Bmc::new(self.clone())?)),
             RedfishVendor::Lenovo => Ok(Box::new(crate::lenovo::Bmc::new(self.clone())?)),
-            RedfishVendor::LenovoAMI | RedfishVendor::LenovoGB300 => {
+            RedfishVendor::LenovoAMI => {
                 Ok(Box::new(crate::ami::Bmc::new(self.clone())?))
             }
             RedfishVendor::NvidiaDpu => Ok(Box::new(crate::nvidia_dpu::Bmc::new(self.clone())?)),

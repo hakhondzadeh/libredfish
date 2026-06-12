@@ -434,7 +434,7 @@ impl Redfish for Bmc {
             use EnabledDisabled::*;
             if matches!(
                 self.s.vendor,
-                Some(RedfishVendor::LenovoAMI | RedfishVendor::LenovoGB300)
+                Some(RedfishVendor::LenovoAMI)
             ) {
                 let value = match target {
                     Enabled => "Enable",
@@ -477,7 +477,7 @@ impl Redfish for Bmc {
         Box::pin(async move {
             if matches!(
                 self.s.vendor,
-                Some(RedfishVendor::LenovoAMI | RedfishVendor::LenovoGB300)
+                Some(RedfishVendor::LenovoAMI)
             ) {
                 return self.lockdown_status_lenovo_ami().await;
             }
@@ -708,7 +708,7 @@ impl Redfish for Bmc {
             // restrict this native path to LenovoAMI; other AMI platforms fall back to NotSupported.
             if !matches!(
                 self.s.vendor,
-                Some(RedfishVendor::LenovoAMI | RedfishVendor::LenovoGB300)
+                Some(RedfishVendor::LenovoAMI)
             ) {
                 return self
                     .s
