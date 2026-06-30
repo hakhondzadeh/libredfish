@@ -126,6 +126,7 @@ async fn test_nvidia_gb200() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
+#[ignore = "VR redfish not available"]
 async fn test_nvidia_vera_rubin() -> Result<(), anyhow::Error> {
     run_integration_test("nvidia_vera_rubin", NVIDIA_VERA_RUBIN_PORT).await
 }
